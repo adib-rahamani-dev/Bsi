@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {analyze,integer} from '../public/analyzer.js';
+const header=['ردیف','سرفصل','معین','م','عنوان حساب','کد سپهری','تعداد بدهكار در يكروز','تعداد بستانکار در یک روز',' بدهكار روز جاري',' بستانكار روز جاري','گردش بدهكار تا پايان روز','گردش بستانكار تا پايان روز','مانده'];
+function fixture(){return {name:'synthetic.xlsx',sheets:[{name:'Result',rows:[header,[1,1,1,'بد','حساب آزمایشی','001',1,0,10,0,100,0,-100],[2,1,0,'بد','جمع کل حساب','000',1,0,10,0,100,0,-100],[3,'','','','جمع کل:','',1,0,10,0,100,0,-100]].map(r=>r.map(v=>({v:String(v)})))}]};}
+test('exact integers and localized digits preserve missing versus zero',()=>{assert.equal(integer('۹٬۰۰۷٬۱۹۹٬۲۵۴٬۷۴۰٬۹۹۳'),9007199254740993n);assert.equal(integer('(۱۰۰)'),-100n);assert.equal(integer(''),null);assert.equal(integer('0'),0n);assert.equal(integer('1.2'),null);});
+test('subtotal and grand total do not double count',()=>{const r=analyze(fixture());assert.equal(r.summary.records,1);assert.equal(r.findings.length,0);assert.equal(r.checks.length,14);assert.ok(r.checks.every(c=>c.status==='pass'));});
+test('tampered amount triggers both parent reconciliations and balance',()=>{const b=fixture();b.sheets[0].rows[1][10].v='101';const r=analyze(b);assert.ok(r.findings.some(f=>f.rule==='balance'&&f.row===2));assert.ok(r.findings.some(f=>f.rule==='subtotal'));assert.ok(r.findings.some(f=>f.rule==='grand'));});
+test('missing number does not become zero or pass',()=>{const b=fixture();b.sheets[0].rows[1][10].v='';const r=analyze(b);assert.ok(r.findings.some(f=>f.rule==='quality'));assert.equal(r.checks.filter(c=>c.status==='unavailable').length,2);});
+test('unsupported sheet is explicitly unreviewed',()=>{const r=analyze({name:'x',sheets:[{name:'Other',rows:[]}]});assert.equal(r.sheets[0].supported,false);assert.equal(r.checks.length,0);});
+test('nonperforming accounts inherit category from parent title',()=>{const b=fixture();b.sheets[0].rows[2][4].v='جمع کل مطالبات مشکوک‌الوصول';const r=analyze(b);assert.equal(r.findings.filter(f=>f.rule==='watch').length,1);});
+test('column mapping handles reordered columns',()=>{const b=fixture();b.sheets[0].rows.forEach(r=>{[r[4],r[5]]=[r[5],r[4]];});assert.equal(analyze(b).findings.length,0);});
+test('duplicate keys are reported',()=>{const b=fixture();b.sheets[0].rows.splice(2,0,structuredClone(b.sheets[0].rows[1]));const r=analyze(b);assert.equal(r.findings.filter(f=>f.rule==='duplicate').length,2);});

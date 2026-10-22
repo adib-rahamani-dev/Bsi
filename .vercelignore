@@ -1,0 +1,6 @@
+private
+outputs
+.env*
+tests
+node_modules
+.git
