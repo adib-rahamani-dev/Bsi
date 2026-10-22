@@ -58,7 +58,7 @@ export default async function handler(req,res){
    try{return send(res,200,await readFile(path.join(root,'private/workbook.json')));}catch{return send(res,404,{error:'فایل نمونه روی این سرور نگهداری نمی‌شود. فایل اکسل را از دستگاه انتخاب کنید.'});}
   }
   if(!['GET','HEAD'].includes(req.method))return send(res,405,{error:'روش نامعتبر'});
-  const files={'/':'index.html','/style.css':'style.css','/app.js':'app.js','/analyzer.js':'analyzer.js','/vendor/exceljs.min.js':'vendor/exceljs.min.js'};
+  const files={'/':'index.html','/style.css':'style.css','/refinement.css':'refinement.css','/app.js':'app.js','/analyzer.js':'analyzer.js','/report.js':'report.js','/vendor/exceljs.min.js':'vendor/exceljs.min.js'};
   const file=files[url.pathname];if(!file)return send(res,404,{error:'یافت نشد'});
   // Application code is public; bank records are never embedded in public assets.
   const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
